@@ -8,7 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
-from app.api.v1 import photos
+from app.api.v1 import photos, sessions
+from app.api import gallery
 
 app = FastAPI(
     title="Photobooth API",
@@ -27,6 +28,8 @@ app.add_middleware(
 
 # Include API routers
 app.include_router(photos.router, prefix=settings.API_V1_PREFIX)
+app.include_router(sessions.router, prefix=settings.API_V1_PREFIX)
+app.include_router(gallery.router)
 
 # Serve uploaded media so frontend can display photos
 media_path = Path(settings.MEDIA_ROOT).resolve()

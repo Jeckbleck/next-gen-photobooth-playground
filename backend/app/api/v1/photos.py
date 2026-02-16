@@ -4,10 +4,11 @@ Accepts photos from the frontend (browser capture) and stores them locally.
 """
 from pathlib import Path
 
-from fastapi import APIRouter, File, UploadFile, HTTPException
+from fastapi import APIRouter, File, UploadFile, HTTPException, Form
 
 from app.config import settings
 from app.services.storage_service import StorageService
+from app.services import session_service
 
 router = APIRouter(prefix="/photos", tags=["photos"])
 storage = StorageService(
@@ -31,9 +32,13 @@ def _saved_path_to_url(saved_path: str) -> str:
 
 
 @router.post("/upload")
-async def upload_photo(file: UploadFile = File(...)):
+async def upload_photo(
+    file: UploadFile = File(...),
+    session_id: str = Form(None),
+):
     """
-    Upload a photo (from browser capture). Saves to local storage and returns the URL to display it.
+    Upload a photo (from browser capture). Saves to local storage.
+    If session_id provided, associates the photo with that session.
     """
     content_type = (file.content_type or "").split(";")[0].strip()
     if content_type and content_type not in ALLOWED_CONTENT_TYPES:
@@ -49,4 +54,8 @@ async def upload_photo(file: UploadFile = File(...)):
         filename = filename + ".jpg"
     saved_path = await storage.save_upload(data, filename)
     url = _saved_path_to_url(saved_path)
+
+    if session_id:
+        session_service.add_photo_to_session(session_id, url)
+
     return {"url": url, "path": saved_path}

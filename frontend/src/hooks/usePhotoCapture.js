@@ -1,10 +1,13 @@
 /**
  * usePhotoCapture - Orchestrates the photobooth capture flow.
- * Manages stage, countdown, photo collection, and upload.
+ * Manages stage, countdown, photo collection, upload, and session.
  */
 import { useState, useCallback } from 'react'
 import { uploadPhoto } from '../api/photoApi'
+import { createSession } from '../api/sessionApi'
 import { COUNTDOWN_SECONDS, PHOTO_COUNT, CAPTURE_DELAY_MS } from '../constants/photoBooth'
+
+const DEFAULT_EVENT = 'onlocation'
 
 export function usePhotoCapture(camera, setStage) {
   const {
@@ -17,6 +20,7 @@ export function usePhotoCapture(camera, setStage) {
     setCameraReady,
   } = camera
   const [photos, setPhotos] = useState([])
+  const [galleryUrl, setGalleryUrl] = useState(null)
   const [countdown, setCountdown] = useState(null)
   const [captureIndex, setCaptureIndex] = useState(0)
 
@@ -41,6 +45,7 @@ export function usePhotoCapture(camera, setStage) {
     setError(null)
     setStage('capturing')
     setPhotos([])
+    setGalleryUrl(null)
     setCaptureIndex(0)
 
     const currentStream = stream || videoRef.current?.srcObject
@@ -51,6 +56,17 @@ export function usePhotoCapture(camera, setStage) {
         setStage('greeting')
         return
       }
+    }
+
+    let sessionId = null
+    try {
+      const session = await createSession(DEFAULT_EVENT)
+      sessionId = session.id
+      setGalleryUrl(session.gallery_url)
+    } catch (e) {
+      setError('Failed to create session')
+      setStage('greeting')
+      return
     }
 
     const collected = []
@@ -66,7 +82,7 @@ export function usePhotoCapture(camera, setStage) {
         return
       }
       try {
-        const url = await uploadPhoto(blob)
+        const url = await uploadPhoto(blob, sessionId)
         collected.push(url)
         setPhotos([...collected])
       } catch (e) {
@@ -91,6 +107,7 @@ export function usePhotoCapture(camera, setStage) {
 
   const retake = useCallback(() => {
     setPhotos([])
+    setGalleryUrl(null)
     setStage('greeting')
     setCameraReady?.(false)
     // Camera will start via useCamera's effect when stage becomes 'greeting'
@@ -98,6 +115,7 @@ export function usePhotoCapture(camera, setStage) {
 
   return {
     photos,
+    galleryUrl,
     countdown,
     captureIndex,
     takePhotos,

@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     # Media Storage
     MEDIA_ROOT: str = "./media"
     
+    # Events & Sessions
+    DEFAULT_EVENT: str = "onlocation"
+    GALLERY_EXPIRY_HOURS: int = 1
+    GALLERY_BASE_URL: str = "http://localhost:8000"  # Base URL for gallery links (QR codes)
+    
     # GDPR & Privacy
     DATA_RETENTION_DAYS: int = 30
     AUTO_DELETE_ENABLED: bool = True

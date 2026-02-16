@@ -187,6 +187,31 @@
   object-fit: cover;
 }
 
+.qr-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.qr-label {
+  margin: 0;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.qr-wrap {
+  padding: 1rem;
+  background: white;
+  border-radius: 12px;
+}
+
+.qr-expires {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
 .btn-retake {
   padding: 0.875rem 1.75rem;
   font-size: 1.1rem;

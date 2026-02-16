@@ -11,6 +11,7 @@ function App() {
     videoRef,
     canvasRef,
     photos,
+    galleryUrl,
     countdown,
     captureIndex,
     photoCount,
@@ -40,7 +41,7 @@ function App() {
           />
         )}
         {stage === 'review' && (
-          <ReviewScreen photos={photos} onRetake={retake} />
+          <ReviewScreen photos={photos} galleryUrl={galleryUrl} onRetake={retake} />
         )}
       </div>
     </div>
