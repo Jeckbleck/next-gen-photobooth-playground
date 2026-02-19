@@ -37,6 +37,12 @@ ENV/
 .env
 .env.local
 
+# User settings (contains paths)
+settings.json
+
+# Database (runtime data, created on first run)
+photobooth.db
+
 # Media files
 media/
 *.jpg

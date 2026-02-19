@@ -1,15 +1,12 @@
 """
 Main application entry point for the photobooth backend.
 """
-from pathlib import Path
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
-from app.api.v1 import photos, sessions
-from app.api import gallery
+from app.api.v1 import photos, sessions, settings_api
+from app.api import gallery, media_route
 
 app = FastAPI(
     title="Photobooth API",
@@ -29,12 +26,9 @@ app.add_middleware(
 # Include API routers
 app.include_router(photos.router, prefix=settings.API_V1_PREFIX)
 app.include_router(sessions.router, prefix=settings.API_V1_PREFIX)
+app.include_router(settings_api.router, prefix=settings.API_V1_PREFIX)
 app.include_router(gallery.router)
-
-# Serve uploaded media so frontend can display photos
-media_path = Path(settings.MEDIA_ROOT).resolve()
-media_path.mkdir(parents=True, exist_ok=True)
-app.mount("/media", StaticFiles(directory=str(media_path)), name="media")
+app.include_router(media_route.router)
 
 
 @app.get("/")

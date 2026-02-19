@@ -1,6 +1,7 @@
 """
 Storage service for managing media files.
 Handles file storage, retrieval, and GDPR-compliant deletion.
+Organizes uploads by event: media_root/events/{event_slug}/uploads/
 """
 import logging
 from pathlib import Path
@@ -29,26 +30,35 @@ class StorageService:
         # Create directories if they don't exist
         self._ensure_directories()
     
-    def _ensure_directories(self):
+    def _ensure_directories(self, upload_dir: Path = None):
         """Ensure all required directories exist."""
-        self.media_root.mkdir(parents=True, exist_ok=True)
-        self.upload_dir.mkdir(parents=True, exist_ok=True)
-        self.processed_dir.mkdir(parents=True, exist_ok=True)
+        d = upload_dir or self.upload_dir
+        d.mkdir(parents=True, exist_ok=True)
+        if not upload_dir:
+            self.media_root.mkdir(parents=True, exist_ok=True)
+            self.processed_dir.mkdir(parents=True, exist_ok=True)
     
-    async def save_upload(self, file_data: bytes, filename: str) -> str:
+    def _get_upload_dir(self, event_slug: str) -> Path:
+        """Get upload directory for an event."""
+        return self.media_root / "events" / event_slug / "uploads"
+    
+    async def save_upload(self, file_data: bytes, filename: str, event_slug: str = "onlocation") -> str:
         """
         Save an uploaded file.
         
         Args:
             file_data: File data as bytes
             filename: Original filename
+            event_slug: Event to organize the file under
             
         Returns:
             Path to saved file
         """
+        upload_dir = self._get_upload_dir(event_slug)
+        self._ensure_directories(upload_dir)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         safe_filename = f"{timestamp}_{filename}"
-        file_path = self.upload_dir / safe_filename
+        file_path = upload_dir / safe_filename
         
         file_path.write_bytes(file_data)
         logger.info(f"Saved upload: {file_path}")

@@ -5,6 +5,7 @@
 import { useState, useCallback } from 'react'
 import { uploadPhoto } from '../api/photoApi'
 import { createSession } from '../api/sessionApi'
+import { getSettings } from '../api/settingsApi'
 import { COUNTDOWN_SECONDS, PHOTO_COUNT, CAPTURE_DELAY_MS } from '../constants/photoBooth'
 
 const DEFAULT_EVENT = 'onlocation'
@@ -60,7 +61,9 @@ export function usePhotoCapture(camera, setStage) {
 
     let sessionId = null
     try {
-      const session = await createSession(DEFAULT_EVENT)
+      const settings = await getSettings().catch(() => ({}))
+      const eventSlug = settings.default_event_slug || DEFAULT_EVENT
+      const session = await createSession(eventSlug)
       sessionId = session.id
       setGalleryUrl(session.gallery_url)
     } catch (e) {
