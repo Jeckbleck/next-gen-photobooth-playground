@@ -104,23 +104,31 @@ def regenerate_session(session_id: str):
     return session
 
 
+@router.delete("/sessions/{session_id}")
+def delete_session(session_id: str):
+    """Soft-delete a session and remove its photo files from disk."""
+    if not session_service.delete_session(session_id):
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {"success": True}
+
+
 @router.get("/events/{slug}/photos")
 def list_event_photos(slug: str):
-    """List photo URLs for an event."""
+    """List photo URLs for an event. Scans recursively under events/{slug}/."""
     cfg = get_settings()
     media_root = Path(cfg["media_root"])
-    upload_dir = media_root / "events" / slug / "uploads"
-    if not upload_dir.exists():
+    event_dir = media_root / "events" / slug
+    if not event_dir.exists():
         return {"photos": []}
     extensions = {".jpg", ".jpeg", ".png", ".webp"}
     media_resolved = media_root.resolve()
     photos = []
-    for f in sorted(upload_dir.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
+    for f in sorted(event_dir.rglob("*"), key=lambda p: p.stat().st_mtime, reverse=True):
         if f.is_file() and f.suffix.lower() in extensions:
             try:
                 rel = f.resolve().relative_to(media_resolved)
             except ValueError:
-                rel = Path("events") / slug / "uploads" / f.name
+                rel = f.relative_to(media_root)
             photos.append(f"/media/{rel.as_posix()}")
     return {"photos": photos}
 

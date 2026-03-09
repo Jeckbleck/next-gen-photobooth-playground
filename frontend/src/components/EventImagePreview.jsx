@@ -108,6 +108,10 @@ export function EventImagePreview({ eventSlug, className = '' }) {
         <SessionDetailModal
           session={selectedSession}
           onClose={() => setSelectedSession(null)}
+          onDeleted={(deletedId) => {
+            setSessions((prev) => prev.filter((s) => s.id !== deletedId))
+            setSelectedSession(null)
+          }}
         />
       )}
     </div>

@@ -65,6 +65,7 @@ async def upload_photo(
         filename = filename + ".jpg"
 
     cfg = get_settings()
+    booth_id = cfg["booth_id"]
     event_slug = cfg["default_event_slug"]
     if session_id:
         sess = session_service.get_session(session_id, token=None)
@@ -72,7 +73,13 @@ async def upload_photo(
             event_slug = sess["event_slug"]
 
     storage = _get_storage()
-    saved_path = await storage.save_upload(data, filename, event_slug=event_slug)
+    saved_path = await storage.save_upload(
+        data,
+        filename,
+        event_slug=event_slug,
+        booth_id=booth_id,
+        session_id=session_id,
+    )
     url = _saved_path_to_url(saved_path, cfg["media_root"])
 
     if session_id:

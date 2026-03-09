@@ -1,6 +1,7 @@
 """
 Session service - manages photobooth sessions and events.
 """
+import logging
 import sqlite3
 import secrets
 import json
@@ -11,6 +12,8 @@ from contextlib import contextmanager
 
 from app.config import settings
 from app.services.settings_store import get_settings
+
+logger = logging.getLogger(__name__)
 
 DB_PATH = Path(__file__).parent.parent.parent / "photobooth.db"
 
@@ -33,9 +36,14 @@ def _get_connection():
                 token TEXT NOT NULL,
                 created_at TEXT NOT NULL,
                 expires_at TEXT NOT NULL,
-                photo_urls TEXT NOT NULL
+                photo_urls TEXT NOT NULL,
+                deleted_at TEXT
             )
         """)
+        try:
+            conn.execute("ALTER TABLE sessions ADD COLUMN deleted_at TEXT")
+        except sqlite3.OperationalError:
+            pass
         conn.commit()
         yield conn
     finally:
@@ -94,17 +102,80 @@ def add_photo_to_session(session_id: str, photo_url: str) -> Optional[dict]:
 
 
 def list_sessions_for_event(event_slug: str) -> List[dict]:
-    """List all sessions for an event (including expired). For admin/preview use."""
+    """List non-deleted sessions for an event. Auto-cleans orphaned sessions."""
+    cfg = get_settings()
+    media_root = Path(cfg["media_root"]).resolve()
+
     with _get_connection() as conn:
         rows = conn.execute(
             """
             SELECT * FROM sessions
-            WHERE event_slug = ?
+            WHERE event_slug = ? AND deleted_at IS NULL
             ORDER BY created_at DESC
             """,
             (event_slug,),
         ).fetchall()
-        return [_row_to_session(row) for row in rows]
+
+        sessions = []
+        for row in rows:
+            photo_urls = json.loads(row["photo_urls"])
+            has_files = any(
+                (media_root / url.lstrip("/").removeprefix("media/")).is_file()
+                for url in photo_urls
+            ) if photo_urls else False
+
+            if photo_urls and not has_files:
+                conn.execute(
+                    "UPDATE sessions SET deleted_at = ? WHERE id = ?",
+                    (datetime.utcnow().isoformat(), row["id"]),
+                )
+                continue
+
+            sessions.append(_row_to_session(row))
+
+        conn.commit()
+        return sessions
+
+
+def delete_session(session_id: str) -> bool:
+    """Soft-delete a session and hard-delete its photo files from disk."""
+    cfg = get_settings()
+    media_root = Path(cfg["media_root"]).resolve()
+
+    with _get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM sessions WHERE id = ? AND deleted_at IS NULL",
+            (session_id,),
+        ).fetchone()
+        if not row:
+            return False
+
+        photo_urls = json.loads(row["photo_urls"])
+        for url in photo_urls:
+            rel = url.lstrip("/").removeprefix("media/")
+            file_path = media_root / rel
+            if file_path.is_file():
+                file_path.unlink()
+                logger.info(f"Deleted photo file: {file_path}")
+
+        # Remove empty parent directories up to the event folder
+        for url in photo_urls:
+            rel = url.lstrip("/").removeprefix("media/")
+            file_path = media_root / rel
+            parent = file_path.parent
+            try:
+                if parent.is_dir() and not any(parent.iterdir()):
+                    parent.rmdir()
+                    logger.info(f"Removed empty directory: {parent}")
+            except OSError:
+                pass
+
+        conn.execute(
+            "UPDATE sessions SET deleted_at = ? WHERE id = ?",
+            (datetime.utcnow().isoformat(), session_id),
+        )
+        conn.commit()
+    return True
 
 
 def regenerate_session_token(session_id: str) -> Optional[dict]:
@@ -132,10 +203,10 @@ def regenerate_session_token(session_id: str) -> Optional[dict]:
 
 
 def get_session(session_id: str, token: str = None) -> Optional[dict]:
-    """Get session by ID. If token provided, validates it. Returns None if expired or invalid."""
+    """Get session by ID. If token provided, validates it. Returns None if expired, invalid, or deleted."""
     with _get_connection() as conn:
         row = conn.execute(
-            "SELECT * FROM sessions WHERE id = ?",
+            "SELECT * FROM sessions WHERE id = ? AND deleted_at IS NULL",
             (session_id,),
         ).fetchone()
         if not row:

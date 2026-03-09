@@ -713,6 +713,27 @@
 .session-detail-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.btn-delete-session {
+  padding: 0.5rem 1rem;
+  background: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-right: auto;
+}
+
+.btn-delete-session:hover:not(:disabled) {
+  background: #ef4444;
+  color: white;
+}
+
+.btn-delete-session:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .preview-placeholder,

@@ -4,11 +4,12 @@
  */
 import { useState, useEffect } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { regenerateSessionToken } from '../api/settingsApi'
+import { regenerateSessionToken, deleteSession } from '../api/settingsApi'
 
-export function SessionDetailModal({ session, onClose }) {
+export function SessionDetailModal({ session, onClose, onDeleted }) {
   const [galleryUrl, setGalleryUrl] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [deleting, setDeleting] = useState(false)
 
   const photos = session?.photo_urls || []
 
@@ -22,6 +23,18 @@ export function SessionDetailModal({ session, onClose }) {
       .catch(() => setGalleryUrl(null))
       .finally(() => setLoading(false))
   }, [session?.id])
+
+  async function handleDelete() {
+    if (!confirm('Delete this photo set? The photos will be permanently removed.')) return
+    setDeleting(true)
+    try {
+      await deleteSession(session.id)
+      onDeleted?.(session.id)
+    } catch (e) {
+      console.error('Delete failed:', e)
+      setDeleting(false)
+    }
+  }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -66,6 +79,14 @@ export function SessionDetailModal({ session, onClose }) {
         </div>
 
         <div className="session-detail-actions">
+          <button
+            type="button"
+            className="btn-delete-session"
+            onClick={handleDelete}
+            disabled={deleting}
+          >
+            {deleting ? 'Deleting…' : 'Delete'}
+          </button>
           <button type="button" className="btn-modal-primary" onClick={onClose}>
             Close
           </button>

@@ -3,6 +3,7 @@ Settings store - persists photobooth settings to JSON.
 """
 import hashlib
 import json
+import uuid
 from pathlib import Path
 from typing import Optional
 
@@ -26,12 +27,25 @@ def _load_raw() -> dict:
     return {}
 
 
+def _ensure_booth_id(raw: dict) -> str:
+    """Return existing booth_id or generate, persist, and return a new one."""
+    booth_id = raw.get("booth_id")
+    if booth_id:
+        return booth_id
+    booth_id = f"booth-{uuid.uuid4().hex[:8]}"
+    raw["booth_id"] = booth_id
+    SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    SETTINGS_FILE.write_text(json.dumps(raw, indent=2), encoding="utf-8")
+    return booth_id
+
+
 def get_settings() -> dict:
     """Get current settings (merged with defaults). Does not include password hash."""
     raw = _load_raw()
     return {
         "media_root": raw.get("media_root", default_settings.MEDIA_ROOT),
         "default_event_slug": raw.get("default_event_slug", default_settings.DEFAULT_EVENT),
+        "booth_id": _ensure_booth_id(raw),
     }
 
 
@@ -72,7 +86,8 @@ def save_settings(
         current["media_root"] = str(media_root).strip() or default_settings.MEDIA_ROOT
     if default_event_slug is not None:
         current["default_event_slug"] = str(default_event_slug).strip() or default_settings.DEFAULT_EVENT
-    # Preserve admin_password_hash when updating other settings
+    # Preserve booth_id and admin_password_hash when updating other settings
+    current["booth_id"] = _ensure_booth_id(raw)
     if "admin_password_hash" in raw:
         current["admin_password_hash"] = raw["admin_password_hash"]
     SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)

@@ -81,6 +81,14 @@ export async function listEventSessions(slug) {
   return res.json()
 }
 
+export async function deleteSession(sessionId) {
+  const res = await fetch(`${API_BASE}/api/v1/settings/sessions/${encodeURIComponent(sessionId)}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) throw new Error('Failed to delete session')
+  return res.json()
+}
+
 export async function regenerateSessionToken(sessionId) {
   const res = await fetch(`${API_BASE}/api/v1/settings/sessions/${encodeURIComponent(sessionId)}/regenerate`, {
     method: 'POST',

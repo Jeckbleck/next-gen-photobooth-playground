@@ -1,9 +1,11 @@
 """
 Storage service for managing media files.
 Handles file storage, retrieval, and GDPR-compliant deletion.
-Organizes uploads by event: media_root/events/{event_slug}/uploads/
+Organizes uploads by event and booth:
+  media_root/events/{event_slug}/{booth_id}/{session_id}/{filename}
 """
 import logging
+import uuid
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional, List
@@ -38,26 +40,35 @@ class StorageService:
             self.media_root.mkdir(parents=True, exist_ok=True)
             self.processed_dir.mkdir(parents=True, exist_ok=True)
     
-    def _get_upload_dir(self, event_slug: str) -> Path:
-        """Get upload directory for an event."""
-        return self.media_root / "events" / event_slug / "uploads"
+    def _get_upload_dir(self, event_slug: str, booth_id: str = None, session_id: str = None) -> Path:
+        """Get upload directory: events/{event_slug}/{booth_id}/{session_id}/"""
+        path = self.media_root / "events" / event_slug
+        if booth_id:
+            path = path / booth_id
+        if session_id:
+            path = path / session_id
+        return path
     
-    async def save_upload(self, file_data: bytes, filename: str, event_slug: str = "onlocation") -> str:
+    async def save_upload(
+        self,
+        file_data: bytes,
+        filename: str,
+        event_slug: str = "onlocation",
+        booth_id: str = None,
+        session_id: str = None,
+    ) -> str:
         """
         Save an uploaded file.
         
-        Args:
-            file_data: File data as bytes
-            filename: Original filename
-            event_slug: Event to organize the file under
-            
-        Returns:
-            Path to saved file
+        Path: events/{event_slug}/{booth_id}/{session_id}/{booth_id}_{timestamp}_{uuid}.{ext}
         """
-        upload_dir = self._get_upload_dir(event_slug)
+        upload_dir = self._get_upload_dir(event_slug, booth_id, session_id)
         self._ensure_directories(upload_dir)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_filename = f"{timestamp}_{filename}"
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        ext = Path(filename).suffix or ".jpg"
+        short_id = uuid.uuid4().hex[:8]
+        parts = [p for p in [booth_id, timestamp, short_id] if p]
+        safe_filename = f"{'_'.join(parts)}{ext}"
         file_path = upload_dir / safe_filename
         
         file_path.write_bytes(file_data)
