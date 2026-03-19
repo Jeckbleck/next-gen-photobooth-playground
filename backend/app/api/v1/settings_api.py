@@ -82,6 +82,17 @@ def browse_folder():
     return {"path": path}
 
 
+@router.get("/active-event")
+def get_active_event():
+    """Get the full event object for the current default event."""
+    cfg = get_settings()
+    slug = cfg["default_event_slug"]
+    event = event_service.get_event_by_slug(slug)
+    if not event:
+        raise HTTPException(status_code=404, detail="Active event not found")
+    return event
+
+
 @router.get("/events")
 def list_events():
     """List all events."""
@@ -131,6 +142,16 @@ def list_event_photos(slug: str):
                 rel = f.relative_to(media_root)
             photos.append(f"/media/{rel.as_posix()}")
     return {"photos": photos}
+
+
+@router.put("/events/{slug}/paywall")
+def update_event_paywall(slug: str, body: dict = Body(...)):
+    """Toggle paywall for an event."""
+    enabled = bool(body.get("enabled", False))
+    event = event_service.update_event_paywall(slug, enabled)
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return event
 
 
 @router.post("/events")

@@ -1,14 +1,24 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { usePhotobooth } from './hooks/usePhotobooth'
-import { GreetingScreen, CapturingScreen, ReviewScreen, PasswordModal, SettingsMenu } from './components'
+import {
+  GreetingScreen,
+  CapturingScreen,
+  ReviewScreen,
+  PasswordModal,
+  SettingsMenu,
+  PaymentScreen,
+} from './components'
+import { getActiveEvent } from './api/settingsApi'
 import './App.css'
 
 function App() {
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [showSettingsMenu, setShowSettingsMenu] = useState(false)
+  const [paywallEnabled, setPaywallEnabled] = useState(false)
 
   const {
     stage,
+    setStage,
     stream,
     error,
     cameraReady,
@@ -23,6 +33,16 @@ function App() {
     retake,
   } = usePhotobooth()
 
+  const loadActiveEvent = useCallback(() => {
+    getActiveEvent()
+      .then((event) => setPaywallEnabled(!!event.paywall_enabled))
+      .catch(() => setPaywallEnabled(false))
+  }, [])
+
+  useEffect(() => {
+    loadActiveEvent()
+  }, [loadActiveEvent])
+
   const handleOpenSettings = () => setShowPasswordModal(true)
   const [unlockedPassword, setUnlockedPassword] = useState(null)
   const handlePasswordSuccess = (password) => {
@@ -34,6 +54,19 @@ function App() {
   const handleSettingsClose = () => {
     setShowSettingsMenu(false)
     setUnlockedPassword(null)
+    loadActiveEvent()
+  }
+
+  function handleTakePhotos() {
+    if (paywallEnabled) {
+      setStage('payment')
+    } else {
+      takePhotos()
+    }
+  }
+
+  function handlePaymentComplete() {
+    takePhotos()
   }
 
   return (
@@ -46,7 +79,15 @@ function App() {
             error={error}
             stream={stream}
             cameraReady={cameraReady}
-            onTakePhotos={takePhotos}
+            onTakePhotos={handleTakePhotos}
+            onOpenSettings={handleOpenSettings}
+          />
+        )}
+        {stage === 'payment' && (
+          <PaymentScreen
+            videoRef={videoRef}
+            stream={stream}
+            onPaymentComplete={handlePaymentComplete}
             onOpenSettings={handleOpenSettings}
           />
         )}

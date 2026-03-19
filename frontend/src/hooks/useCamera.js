@@ -68,9 +68,9 @@ export function useCamera(stage = 'greeting') {
     streamRef.current = stream
   }, [stream])
 
-  // Start camera when on greeting screen (initial load + after retake)
+  // Start camera when on greeting or payment screen
   useEffect(() => {
-    if (stage === 'greeting') {
+    if (stage === 'greeting' || stage === 'payment') {
       startCamera()
     }
   }, [stage, startCamera])

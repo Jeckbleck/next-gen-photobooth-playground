@@ -53,6 +53,22 @@ export async function browseFolder() {
   return res.json()
 }
 
+export async function getActiveEvent() {
+  const res = await fetch(`${API_BASE}/api/v1/settings/active-event`)
+  if (!res.ok) throw new Error('Failed to fetch active event')
+  return res.json()
+}
+
+export async function updateEventPaywall(slug, enabled) {
+  const res = await fetch(`${API_BASE}/api/v1/settings/events/${encodeURIComponent(slug)}/paywall`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled }),
+  })
+  if (!res.ok) throw new Error('Failed to update paywall')
+  return res.json()
+}
+
 export async function listEvents() {
   const res = await fetch(`${API_BASE}/api/v1/settings/events`)
   if (!res.ok) throw new Error('Failed to fetch events')

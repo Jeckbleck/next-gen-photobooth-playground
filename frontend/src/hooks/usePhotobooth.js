@@ -16,6 +16,7 @@ export function usePhotobooth() {
     ...camera,
     ...capture,
     stage,
+    setStage,
     photoCount: PHOTO_COUNT,
   }
 }

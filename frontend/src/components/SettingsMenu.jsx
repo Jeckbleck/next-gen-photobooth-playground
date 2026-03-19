@@ -2,7 +2,7 @@
  * SettingsMenu - Customization menu for storage path and events.
  */
 import { useState, useEffect } from 'react'
-import { getSettings, updateSettings, listEvents, createEvent, changePassword } from '../api/settingsApi'
+import { getSettings, updateSettings, listEvents, createEvent, changePassword, updateEventPaywall } from '../api/settingsApi'
 import { StoragePathPicker } from './StoragePathPicker'
 import { EventImagePreview } from './EventImagePreview'
 import { PasswordInput } from './PasswordInput'
@@ -168,6 +168,27 @@ export function SettingsMenu({ onClose, currentPassword = '' }) {
               </option>
             ))}
           </select>
+          <label className="paywall-toggle">
+            <input
+              type="checkbox"
+              checked={
+                (events.find((ev) => ev.slug === defaultEventSlug) || {}).paywall_enabled || false
+              }
+              onChange={async (e) => {
+                const enabled = e.target.checked
+                try {
+                  const updated = await updateEventPaywall(defaultEventSlug, enabled)
+                  setEvents((prev) =>
+                    prev.map((ev) => (ev.slug === defaultEventSlug ? { ...ev, ...updated } : ev))
+                  )
+                } catch (err) {
+                  setMessage('Failed to update paywall')
+                }
+              }}
+              disabled={saving}
+            />
+            <span>Require payment before photos</span>
+          </label>
           <div className="create-event-row">
             <input
               type="text"
